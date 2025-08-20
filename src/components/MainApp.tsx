@@ -400,18 +400,21 @@ export function MainApp({
 
         {/* List Selector and Actions */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-8">
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-3 flex-1">
-              <button
-                onClick={() => setShowCreateList(true)}
-                className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors whitespace-nowrap"
-              >
-                + New List
-              </button>
-            </div>
+          {/* New List Button - Full Width on Mobile */}
+          <div className="mb-4">
+            <button
+              onClick={() => setShowCreateList(true)}
+              className="w-full px-4 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+            >
+              + New List
+            </button>
+          </div>
+          
+          {/* Action Buttons Row */}
+          <div className="flex flex-wrap gap-3 items-center justify-between">
             
-            {/* Public/Private Toggle */}
-            <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded border border-gray-200">
+            {/* Privacy Toggle */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
               <span className={`text-xs px-2 py-1 rounded-full ${
                 currentList?.is_public 
                   ? 'bg-green-100 text-green-800' 
@@ -435,7 +438,7 @@ export function MainApp({
             <div className="flex gap-2">
               <button
                 onClick={() => shareList(currentListId)}
-                className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors whitespace-nowrap"
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
@@ -444,7 +447,7 @@ export function MainApp({
               </button>
               <button
                 onClick={() => deleteList(currentListId)}
-                className="px-4 py-2 bg-gray-100 text-gray-500 rounded hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors whitespace-nowrap border border-gray-200"
+                className="px-4 py-2 bg-gray-100 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors border border-gray-200 flex items-center gap-2"
               >
                 <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
