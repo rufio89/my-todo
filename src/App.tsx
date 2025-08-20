@@ -213,8 +213,6 @@ function App() {
         <ProfilePage onNavigate={handleNavigate} />
       ) : (
         <MainApp 
-          user={user}
-          signOut={signOut}
           todoLists={todoLists}
           setTodoLists={setTodoLists}
           currentListId={currentListId}
@@ -230,7 +228,6 @@ function App() {
           showShareModal={showShareModal}
           setShowShareModal={setShowShareModal}
           todosLoading={todosLoading}
-          setTodosLoading={setTodosLoading}
           error={error}
           setError={setError}
           appTitle={appTitle}

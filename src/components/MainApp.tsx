@@ -1,11 +1,8 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../supabase'
+import { useEffect } from 'react'
 import { todoService } from '../services/todoService'
-import type { TodoList, Todo, User } from '../types'
+import type { TodoList, Todo } from '../types'
 
 interface MainAppProps {
-  user: User
-  signOut: () => Promise<void>
   todoLists: TodoList[]
   setTodoLists: (lists: TodoList[]) => void
   currentListId: string
@@ -21,7 +18,6 @@ interface MainAppProps {
   showShareModal: boolean
   setShowShareModal: (show: boolean) => void
   todosLoading: boolean
-  setTodosLoading: (loading: boolean) => void
   error: string | null
   setError: (error: string | null) => void
   appTitle: string
@@ -33,8 +29,6 @@ interface MainAppProps {
 }
 
 export function MainApp({
-  user,
-  signOut,
   todoLists,
   setTodoLists,
   currentListId,
@@ -50,7 +44,6 @@ export function MainApp({
   showShareModal,
   setShowShareModal,
   todosLoading,
-  setTodosLoading,
   error,
   setError,
   appTitle,

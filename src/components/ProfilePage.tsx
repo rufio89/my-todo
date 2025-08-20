@@ -1,6 +1,5 @@
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../supabase'
-import { useState } from 'react'
 
 interface ProfilePageProps {
   onNavigate: (page: 'home' | 'profile' | 'list') => void
@@ -8,8 +7,6 @@ interface ProfilePageProps {
 
 export function ProfilePage({ onNavigate }: ProfilePageProps) {
   const { user } = useAuth()
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [updateMessage, setUpdateMessage] = useState('')
 
   if (!user) {
     return (
@@ -27,16 +24,6 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
     } catch (error) {
       console.error('Error signing out:', error)
     }
-  }
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
   }
 
   return (

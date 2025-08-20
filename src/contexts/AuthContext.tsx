@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '../supabase'
-import type { User, AuthState } from '../types'
+import type { AuthState } from '../types'
 
 interface AuthContextType extends AuthState {
   signInWithGoogle: () => Promise<void>

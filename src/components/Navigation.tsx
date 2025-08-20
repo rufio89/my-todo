@@ -1,5 +1,4 @@
 import { useAuth } from '../contexts/AuthContext'
-import type { User } from '../types'
 
 interface NavigationProps {
   currentPage: 'home' | 'profile' | 'list'
