@@ -8,6 +8,7 @@ import { AuthCallback } from './components/AuthCallback'
 import { MainApp } from './components/MainApp'
 import { Navigation } from './components/Navigation'
 import { ProfilePage } from './components/ProfilePage'
+import { PublicListView } from './components/PublicListView'
 import './App.css'
 
 function App() {
@@ -198,8 +199,30 @@ function App() {
     )
   }
 
+  // Check if user is trying to access a specific list
+  const urlParams = new URLSearchParams(window.location.search)
+  const listParam = urlParams.get('list')
+  
   if (!user) {
+    // If no user but trying to access a specific list, check if it's public
+    if (listParam) {
+      // Try to load the public list for unauthenticated users
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <div className="py-8 px-4">
+            <div className="max-w-2xl mx-auto">
+              <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold text-gray-800 mb-4">Public Todo List</h1>
+                <p className="text-gray-600">Viewing a shared list</p>
+              </div>
+              <PublicListView listId={listParam} />
+            </div>
+          </div>
+        </div>
+      )
+    }
     
+    // Otherwise, show login page
     return <LoginPage />
   }
 

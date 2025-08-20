@@ -61,5 +61,14 @@ CREATE POLICY "Users can insert todos in their own lists" ON todos
 CREATE POLICY "Users can update todos in their own lists" ON todos
   FOR UPDATE USING (auth.uid() = user_id);
 
+-- NEW POLICY: Allow public users to update todos on public lists (for completion status)
+CREATE POLICY "Public users can update todos on public lists" ON todos
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM todo_lists 
+      WHERE id = todos.todo_list_id AND is_public = true
+    )
+  );
+
 CREATE POLICY "Users can delete todos in their own lists" ON todos
   FOR DELETE USING (auth.uid() = user_id);
