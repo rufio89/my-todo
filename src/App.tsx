@@ -22,7 +22,7 @@ function App() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [todosLoading, setTodosLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [appTitle, setAppTitle] = useState('Your To Do')
+  const [appTitle, setAppTitle] = useState('memora')
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [showHomePage, setShowHomePage] = useState(true)
   const [currentPage, setCurrentPage] = useState<'home' | 'profile' | 'list'>('home')

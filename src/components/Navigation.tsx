@@ -27,7 +27,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
               className="text-xl font-bold text-gray-800 cursor-pointer hover:text-gray-600 transition-colors"
               onClick={() => onNavigate('home')}
             >
-              Your To Do
+              memora
             </h1>
           </div>
 

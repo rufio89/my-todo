@@ -216,7 +216,7 @@ export function MainApp({
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">Your To Do</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">memora</h1>
           <p className="text-gray-600 mb-6">Get started with your first todo list</p>
           
           <div className="bg-white rounded-lg shadow-sm p-6 max-w-md mx-auto">
@@ -250,7 +250,7 @@ export function MainApp({
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Your To Do</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">memora</h1>
             <p className="text-gray-600">Manage your todo lists</p>
           </div>
 

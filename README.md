@@ -1,4 +1,4 @@
-# ✨ Collaborative Todo App
+# ✨ memora - Collaborative Todo App
 
 A real-time collaborative todo app built with React, TypeScript, Tailwind CSS, and Supabase.
 
