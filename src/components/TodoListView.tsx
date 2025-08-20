@@ -18,6 +18,8 @@ export default function TodoListView({ listId }: TodoListViewProps) {
   const [isAddingTodo, setIsAddingTodo] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editTitle, setEditTitle] = useState('')
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   useEffect(() => {
     loadListAndTodos()
@@ -122,14 +124,15 @@ export default function TodoListView({ listId }: TodoListViewProps) {
 
   const handleDeleteList = async () => {
     if (!list) return
-    
-    if (confirm('Are you sure you want to delete this list? This action cannot be undone.')) {
-      try {
-        await todoService.deleteTodoList(list.id)
-        handleGoHome() // Use the same navigation function
-      } catch (err) {
-        setError('Failed to delete list')
-      }
+    setShowDeleteModal(true)
+  }
+
+  const confirmDelete = async () => {
+    try {
+      await todoService.deleteTodoList(list!.id)
+      handleGoHome()
+    } catch (err) {
+      setError('Failed to delete list')
     }
   }
 
@@ -138,7 +141,9 @@ export default function TodoListView({ listId }: TodoListViewProps) {
     
     const url = `${window.location.origin}/?list=${list.id}`
     navigator.clipboard.writeText(url).then(() => {
-      alert('List URL copied to clipboard!')
+      setShowShareModal(true)
+      // Auto-hide the modal after 3 seconds
+      setTimeout(() => setShowShareModal(false), 3000)
     })
   }
 
@@ -401,6 +406,60 @@ export default function TodoListView({ listId }: TodoListViewProps) {
           )}
         </div>
       </div>
+
+      {/* Share Success Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Link Copied!</h3>
+            <p className="text-gray-600 mb-4">
+              The list URL has been copied to your clipboard. Share it with others to collaborate!
+            </p>
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="w-full bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Delete List?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete "{list?.title}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

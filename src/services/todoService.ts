@@ -52,6 +52,14 @@ export const todoService = {
 
   // Get todos for a specific list
   async getTodos(listId: string): Promise<Todo[]> {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      // Anonymous user - need to set session ID for RLS
+      const sessionId = anonymousService.getSessionId()
+      await supabase.rpc('set_anonymous_session_id', { session_id: sessionId })
+    }
+    
     // Simplified version - just get todos directly
     const { data, error } = await supabase
       .from('todos')

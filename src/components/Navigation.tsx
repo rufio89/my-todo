@@ -98,7 +98,7 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
               <div className="flex items-center space-x-3">
                 <span className="text-sm text-gray-500">Not signed in</span>
                 <button
-                  onClick={() => window.location.reload()} // This will trigger the login flow
+                  onClick={() => window.location.href = '/'}
                   className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
                 >
                   Sign In

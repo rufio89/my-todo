@@ -60,7 +60,7 @@ CREATE POLICY "Users can update their own todo lists" ON todo_lists
 CREATE POLICY "Anonymous users can update their lists" ON todo_lists
   FOR UPDATE USING (
     is_anonymous = true AND 
-    anonymous_session_id = current_setting('app.anonymous_session_id', true)
+    anonymous_session_id = current_setting('app.anonymous_session_id')
   );
 
 CREATE POLICY "Users can delete their own todo lists" ON todo_lists
@@ -69,7 +69,7 @@ CREATE POLICY "Users can delete their own todo lists" ON todo_lists
 CREATE POLICY "Anonymous users can delete their lists" ON todo_lists
   FOR DELETE USING (
     is_anonymous = true AND 
-    anonymous_session_id = current_setting('app.anonymous_session_id', true)
+    anonymous_session_id = current_setting('app.anonymous_session_id')
   );
 
 -- RLS Policies for todos
@@ -90,7 +90,7 @@ CREATE POLICY "Users can view todos from anonymous lists by session" ON todos
       SELECT 1 FROM todo_lists 
       WHERE id = todos.todo_list_id AND 
       is_anonymous = true AND 
-      anonymous_session_id = current_setting('app.anonymous_session_id', true)
+      anonymous_session_id = current_setting('app.anonymous_session_id')
     )
   );
 
@@ -103,7 +103,7 @@ CREATE POLICY "Anonymous users can insert todos in their lists" ON todos
       SELECT 1 FROM todo_lists 
       WHERE id = todos.todo_list_id AND 
       is_anonymous = true AND 
-      anonymous_session_id = current_setting('app.anonymous_session_id', true)
+      anonymous_session_id = current_setting('app.anonymous_session_id')
     )
   );
 
@@ -125,7 +125,7 @@ CREATE POLICY "Anonymous users can update todos in their lists" ON todos
       SELECT 1 FROM todo_lists 
       WHERE id = todos.todo_list_id AND 
       is_anonymous = true AND 
-      anonymous_session_id = current_setting('app.anonymous_session_id', true)
+      anonymous_session_id = current_setting('app.anonymous_session_id')
     )
   );
 
@@ -138,7 +138,7 @@ CREATE POLICY "Anonymous users can delete todos in their lists" ON todos
       SELECT 1 FROM todo_lists 
       WHERE id = todos.todo_list_id AND 
       is_anonymous = true AND 
-      anonymous_session_id = current_setting('app.anonymous_session_id', true)
+      anonymous_session_id = current_setting('app.anonymous_session_id')
     )
   );
 
