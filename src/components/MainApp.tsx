@@ -54,12 +54,7 @@ export function MainApp({
   setShowHomePage
 }: MainAppProps) {
 
-  console.log('MainApp render:', { 
-    todosLoading, 
-    todoListsLength: todoLists.length, 
-    currentListId,
-    error 
-  })
+
 
   const createNewList = async () => {
     if (newListName.trim()) {
@@ -79,7 +74,7 @@ export function MainApp({
     e.preventDefault()
     if (inputValue.trim() && currentListId) {
       try {
-        const newTodo = await todoService.createTodo(currentListId, inputValue.trim())
+        const newTodo = await todoService.createTodo(inputValue.trim(), currentListId)
         setCurrentTodos([...currentTodos, newTodo])
         setInputValue('')
       } catch (err) {
@@ -129,6 +124,18 @@ export function MainApp({
     }
   }
 
+  const toggleListPrivacy = async (listId: string, isPublic: boolean) => {
+    try {
+      const updatedList = await todoService.updateTodoList(listId, { is_public: isPublic })
+      setTodoLists(todoLists.map(list => 
+        list.id === listId ? updatedList : list
+      ))
+    } catch (err) {
+      setError('Failed to update list privacy')
+      console.error('Error updating list privacy:', err)
+    }
+  }
+
   const shareList = (listId: string) => {
     const shareUrl = `${window.location.origin}${window.location.pathname}?list=${listId}`
     navigator.clipboard.writeText(shareUrl).then(() => {
@@ -138,11 +145,14 @@ export function MainApp({
   }
 
   const remainingTodos = currentTodos.filter(todo => !todo.completed).length
+  
+  // Get the current list data for privacy toggle
+  const currentList = todoLists.find(list => list.id === currentListId)
 
   const saveTitle = async () => {
     if (appTitle.trim() && currentListId) {
       try {
-        const updatedList = await todoService.updateTodoList(currentListId, { name: appTitle.trim() })
+        const updatedList = await todoService.updateTodoList(currentListId, { title: appTitle.trim() })
         setTodoLists(todoLists.map(list => 
           list.id === currentListId ? updatedList : list
         ))
@@ -156,20 +166,20 @@ export function MainApp({
 
   // Load todo lists when component mounts
   useEffect(() => {
-    console.log('MainApp: useEffect - loading todo lists')
+
     // The parent App component handles loading todo lists and subscriptions
   }, [])
 
   // Set up real-time subscriptions
   useEffect(() => {
     if (currentListId) {
-      console.log('MainApp: Setting up subscription for list:', currentListId)
+  
       // The parent App component handles loading todos and subscriptions
     }
   }, [currentListId])
 
   if (todosLoading) {
-    console.log('MainApp: Rendering loading screen')
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -269,7 +279,29 @@ export function MainApp({
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {todoLists.map((list) => (
               <div key={list.id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">{list.name}</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-semibold text-gray-800">{list.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      list.is_public 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {list.is_public ? 'Public' : 'Private'}
+                    </span>
+                    <button
+                      onClick={() => toggleListPrivacy(list.id, !list.is_public)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        list.is_public ? 'bg-green-600' : 'bg-gray-300'
+                      }`}
+                      title={`Make ${list.is_public ? 'private' : 'public'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        list.is_public ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
                 <p className="text-gray-600 text-sm mb-4">
                   Created {new Date(list.created_at).toLocaleDateString()}
                 </p>
@@ -348,16 +380,20 @@ export function MainApp({
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-center gap-2">
-              <h1 className="text-3xl font-bold text-gray-800 cursor-pointer hover:text-gray-600" onClick={() => setIsEditingTitle(true)}>
-                {appTitle}
-              </h1>
-              <button
-                onClick={() => setIsEditingTitle(true)}
-                className="text-gray-500 hover:text-gray-700 text-lg"
-              >
-                ✏️
-              </button>
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center justify-center gap-2">
+                <h1 className="text-3xl font-bold text-gray-800 cursor-pointer hover:text-gray-600" onClick={() => setIsEditingTitle(true)}>
+                  {appTitle}
+                </h1>
+                <button
+                  onClick={() => setIsEditingTitle(true)}
+                  className="text-gray-500 hover:text-gray-700 text-lg"
+                >
+                  ✏️
+                </button>
+              </div>
+              
+
             </div>
           )}
         </div>
@@ -371,6 +407,28 @@ export function MainApp({
                 className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors whitespace-nowrap"
               >
                 + New List
+              </button>
+            </div>
+            
+            {/* Public/Private Toggle */}
+            <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded border border-gray-200">
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                currentList?.is_public 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {currentList?.is_public ? 'Public' : 'Private'}
+              </span>
+              <button
+                onClick={() => toggleListPrivacy(currentListId, !currentList?.is_public)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  currentList?.is_public ? 'bg-green-600' : 'bg-gray-300'
+                }`}
+                title={`Make ${currentList?.is_public ? 'private' : 'public'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  currentList?.is_public ? 'translate-x-6' : 'translate-x-1'
+                }`} />
               </button>
             </div>
             
@@ -402,7 +460,7 @@ export function MainApp({
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                {todoLists.find(list => list.name === newListName) ? 'Rename List' : 'Create New List'}
+                {todoLists.find(list => list.title === newListName) ? 'Rename List' : 'Create New List'}
               </h3>
               <input
                 type="text"
@@ -420,7 +478,7 @@ export function MainApp({
                   }}
                   className="flex-1 px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-colors"
                 >
-                  {todoLists.find(list => list.name === newListName) ? 'Rename' : 'Create'}
+                  {todoLists.find(list => list.title === newListName) ? 'Rename' : 'Create'}
                 </button>
                 <button
                   onClick={() => {
@@ -490,7 +548,7 @@ export function MainApp({
               <span className={`flex-1 ml-3 text-gray-800 ${
                 todo.completed ? 'line-through text-gray-500' : ''
               }`}>
-                {todo.text}
+                {todo.title}
               </span>
               
               <button

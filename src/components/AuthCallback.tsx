@@ -14,7 +14,7 @@ export function AuthCallback() {
           const refreshToken = hashParams.get('refresh_token')
           
           if (accessToken) {
-            console.log('Processing OAuth callback with tokens')
+
             
             // Set the session with the tokens
             const { data, error } = await supabase.auth.setSession({
@@ -29,7 +29,7 @@ export function AuthCallback() {
             }
             
             if (data.session) {
-              console.log('Session established successfully')
+
               setStatus('success')
               setTimeout(() => {
                 window.location.href = '/'

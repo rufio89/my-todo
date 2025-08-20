@@ -30,13 +30,13 @@ function App() {
   const isAuthCallback = window.location.pathname === '/auth/callback'
 
   // Debug logging
-  console.log('App render:', { user, authLoading, isAuthCallback, currentPage })
+
 
   // Add a timeout fallback for loading state
   useEffect(() => {
     const timer = setTimeout(() => {
       if (authLoading) {
-        console.log('Auth loading timeout - forcing to false')
+    
         // Force loading to false after 5 seconds as a fallback
         // This will help debug if there's an issue with the auth context
       }
@@ -48,10 +48,9 @@ function App() {
   // Test Supabase connection
   useEffect(() => {
     const testSupabase = async () => {
-      try {
-        const { data, error } = await supabase.from('todo_lists').select('count').limit(1)
-        console.log('Supabase test result:', { data, error })
-      } catch (err) {
+              try {
+          await supabase.from('todo_lists').select('count').limit(1)
+        } catch (err) {
         console.error('Supabase test error:', err)
       }
     }
@@ -103,7 +102,7 @@ function App() {
     if (user && currentListId && todoLists.length > 0 && !isAuthCallback) {
       const currentList = todoLists.find(list => list.id === currentListId)
       if (currentList) {
-        setAppTitle(currentList.name)
+        setAppTitle(currentList.title)
       }
     }
   }, [user, currentListId, todoLists, isAuthCallback])
@@ -132,7 +131,7 @@ function App() {
         return
       }
       
-      const todos = await todoService.getTodosByListId(listId)
+              const todos = await todoService.getTodos(listId)
       setCurrentTodos(todos)
     } catch (err) {
       console.error('Error loading todos:', err)
@@ -155,10 +154,10 @@ function App() {
           event: '*',
           schema: 'public',
           table: 'todos',
-          filter: `list_id=eq.${listId}`
+          filter: `todo_list_id=eq.${listId}`
         },
         (payload) => {
-          console.log('Real-time update:', payload)
+  
           loadTodos(listId)
         }
       )
@@ -181,12 +180,12 @@ function App() {
 
   // Render different components based on state
   if (isAuthCallback) {
-    console.log('Rendering AuthCallback')
+    
     return <AuthCallback />
   }
 
   if (authLoading) {
-    console.log('Rendering loading screen')
+    
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -200,7 +199,7 @@ function App() {
   }
 
   if (!user) {
-    console.log('Rendering LoginPage')
+    
     return <LoginPage />
   }
 

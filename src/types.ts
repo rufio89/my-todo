@@ -1,21 +1,18 @@
-export interface TodoList {
-  id: string
-  name: string
-  created_at: string
-  updated_at: string
-}
-
 export interface Todo {
   id: string
-  list_id: string
-  text: string
+  title: string
   completed: boolean
+  todo_list_id: string
+  user_id: string
   created_at: string
-  updated_at: string
 }
 
-export interface TodoWithList extends Todo {
-  todo_lists: TodoList
+export interface TodoList {
+  id: string
+  title: string
+  user_id: string
+  is_public: boolean
+  created_at: string
 }
 
 export interface User {

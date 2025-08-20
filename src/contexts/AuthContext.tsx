@@ -16,11 +16,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   useEffect(() => {
-    console.log('AuthContext: Setting up auth listener')
+
     
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('AuthContext: Initial session:', session)
+
       setAuthState({
         user: session?.user ? {
           id: session.user.id,
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('AuthContext: Auth state change:', event, session)
+
         setAuthState({
           user: session?.user ? {
             id: session.user.id,
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
 
     return () => {
-      console.log('AuthContext: Cleaning up subscription')
+
       subscription.unsubscribe()
     }
   }, [])
