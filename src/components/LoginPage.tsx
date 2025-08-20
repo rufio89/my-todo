@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { todoService } from '../services/todoService'
-import { anonymousService } from '../services/anonymousService'
 
 export default function LoginPage() {
   const { signInWithGoogle } = useAuth()
@@ -22,7 +21,6 @@ export default function LoginPage() {
       window.location.href = `/?list=${newList.id}`
     } catch (err) {
       setError('Failed to create list. Please try again.')
-      console.error('Error creating list:', err)
       setIsCreatingList(false)
     }
   }
@@ -32,7 +30,6 @@ export default function LoginPage() {
       await signInWithGoogle()
     } catch (err) {
       setError('Failed to sign in. Please try again.')
-      console.error('Error signing in:', err)
     }
   }
 

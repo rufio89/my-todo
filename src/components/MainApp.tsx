@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { todoService } from '../services/todoService'
 import { anonymousService } from '../services/anonymousService'
-import type { Todo, TodoList } from '../types'
+import type { TodoList } from '../types'
 import { useAuth } from '../contexts/AuthContext'
 
 interface MainAppProps {

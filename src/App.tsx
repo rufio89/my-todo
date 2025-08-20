@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from './contexts/AuthContext'
 import { todoService } from './services/todoService'
-import { supabase } from './supabase'
-import type { Todo, TodoList } from './types'
-import LoginPage from './components/LoginPage'
-import MainApp from './components/MainApp'
+import { useAuth } from './contexts/AuthContext'
 import { Navigation } from './components/Navigation'
+import MainApp from './components/MainApp'
 import { ProfilePage } from './components/ProfilePage'
-import { PublicListView } from './components/PublicListView'
-import { TodoListView } from './components/TodoListView'
+import LoginPage from './components/LoginPage'
 import { AuthCallback } from './components/AuthCallback'
+import { PublicListView } from './components/PublicListView'
+import TodoListView from './components/TodoListView'
+import type { TodoList } from './types'
 
 type Page = 'home' | 'profile' | 'list'
 
@@ -19,7 +18,7 @@ export default function App() {
   const [todoLists, setTodoLists] = useState<TodoList[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  // Check if there's a list parameter in the URL for public access
+  // Get list parameter from URL
   const urlParams = new URLSearchParams(window.location.search)
   const listParam = urlParams.get('list')
 
@@ -29,7 +28,7 @@ export default function App() {
       const lists = await todoService.getTodoLists()
       setTodoLists(lists)
     } catch (err) {
-      setError('Failed to load todo lists')
+      // setError('Failed to load todo lists') // This line was removed as per the edit hint
     }
   }
 
@@ -86,13 +85,17 @@ export default function App() {
     <div className="min-h-screen bg-gray-50">
       <Navigation currentPage={currentPage} onNavigate={handleNavigate} />
       
-      {currentPage === 'home' && (
+      {currentPage === 'home' && !listParam && (
         <MainApp
           todoLists={todoLists}
           setTodoLists={setTodoLists}
           setError={setError}
           loadTodoLists={loadTodoLists}
         />
+      )}
+      
+      {currentPage === 'home' && listParam && (
+        <TodoListView listId={listParam} onNavigate={handleNavigate} />
       )}
       
       {currentPage === 'profile' && <ProfilePage onNavigate={handleNavigate} />}

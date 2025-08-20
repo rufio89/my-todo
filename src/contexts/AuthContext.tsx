@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(userData)
           
           // Migrate any anonymous lists to this user's account
-          migrateAnonymousLists(session.user.id).catch((err) => {
+          migrateAnonymousLists(session.user.id).catch(() => {
             // Continue even if migration fails
           })
         }
@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     getInitialSession()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_, session) => {
       if (session?.user) {
         const userData = {
           id: session.user.id,
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData)
         
         // Migrate any anonymous lists to this user's account
-        migrateAnonymousLists(session.user.id).catch((err) => {
+        migrateAnonymousLists(session.user.id).catch(() => {
           // Continue even if migration fails
         })
       } else {

@@ -9,7 +9,7 @@ interface TodoListViewProps {
   onNavigate: (page: 'home' | 'profile' | 'list') => void
 }
 
-export function TodoListView({ listId, onNavigate }: TodoListViewProps) {
+export default function TodoListView({ listId, onNavigate }: TodoListViewProps) {
   const [list, setList] = useState<TodoList | null>(null)
   const [todos, setTodos] = useState<Todo[]>([])
   const [loading, setLoading] = useState(true)

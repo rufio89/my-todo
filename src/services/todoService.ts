@@ -52,8 +52,6 @@ export const todoService = {
 
   // Get todos for a specific list
   async getTodos(listId: string): Promise<Todo[]> {
-    const { data: { user } } = await supabase.auth.getUser()
-    
     // Simplified version - just get todos directly
     const { data, error } = await supabase
       .from('todos')
@@ -62,7 +60,6 @@ export const todoService = {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching todos:', error)
       throw error
     }
     

@@ -47,7 +47,6 @@ export function PublicListView({ listId }: PublicListViewProps) {
 
     } catch (err) {
       setError('Failed to load list')
-      console.error('Error loading list:', err)
     } finally {
       setLoading(false)
     }
@@ -59,7 +58,6 @@ export function PublicListView({ listId }: PublicListViewProps) {
       setTodos(todos.map(t => t.id === todo.id ? updatedTodo : t))
     } catch (err) {
       setError('Failed to update todo')
-      console.error('Error updating todo:', err)
     }
   }
 
@@ -74,7 +72,6 @@ export function PublicListView({ listId }: PublicListViewProps) {
       setNewTodoText('')
     } catch (err) {
       setError('Failed to add todo')
-      console.error('Error adding todo:', err)
     } finally {
       setIsAddingTodo(false)
     }

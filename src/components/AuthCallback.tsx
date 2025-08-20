@@ -23,7 +23,6 @@ export function AuthCallback() {
             })
             
             if (error) {
-              console.error('Error setting session:', error)
               setStatus('error')
               return
             }
@@ -43,7 +42,6 @@ export function AuthCallback() {
         const { data, error } = await supabase.auth.getSession()
         
         if (error) {
-          console.error('Session error:', error)
           setStatus('error')
           return
         }
@@ -57,7 +55,6 @@ export function AuthCallback() {
           setStatus('error')
         }
       } catch (error) {
-        console.error('Auth callback error:', error)
         setStatus('error')
       }
     }
