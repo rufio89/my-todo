@@ -10,8 +10,11 @@ export interface Todo {
 export interface TodoList {
   id: string
   title: string
-  user_id: string
+  user_id: string | null
   is_public: boolean
+  is_anonymous: boolean
+  anonymous_session_id: string | null
+  expires_at: string | null
   created_at: string
 }
 

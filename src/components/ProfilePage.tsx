@@ -21,8 +21,9 @@ export function ProfilePage({ onNavigate }: ProfilePageProps) {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
+      onNavigate('home')
     } catch (error) {
-      console.error('Error signing out:', error)
+      // Handle sign out error silently
     }
   }
 

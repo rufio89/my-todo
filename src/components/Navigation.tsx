@@ -11,9 +11,10 @@ export function Navigation({ currentPage, onNavigate }: NavigationProps) {
   const handleSignOut = async () => {
     try {
       await signOut()
-      // Navigation will be handled by the auth context
+      // Redirect to home page after signing out
+      onNavigate('home')
     } catch (error) {
-      console.error('Error signing out:', error)
+      // Handle sign out error silently
     }
   }
 
