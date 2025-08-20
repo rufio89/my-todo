@@ -21,16 +21,6 @@ export default function TodoListView({ listId }: TodoListViewProps) {
 
   useEffect(() => {
     loadListAndTodos()
-    
-    // Add a timeout fallback to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        setLoading(false)
-        setError('Loading timeout - please refresh the page')
-      }
-    }, 5000) // Reduced to 5 seconds for faster debugging
-
-    return () => clearTimeout(timeoutId)
   }, [listId])
 
   const loadListAndTodos = async () => {
