@@ -7,12 +7,49 @@ export function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // Check if we have OAuth tokens in the hash
+        if (window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1))
+          const accessToken = hashParams.get('access_token')
+          const refreshToken = hashParams.get('refresh_token')
+          
+          if (accessToken) {
+            console.log('Processing OAuth callback with tokens')
+            
+            // Set the session with the tokens
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            })
+            
+            if (error) {
+              console.error('Error setting session:', error)
+              setStatus('error')
+              return
+            }
+            
+            if (data.session) {
+              console.log('Session established successfully')
+              setStatus('success')
+              setTimeout(() => {
+                window.location.href = '/'
+              }, 1000)
+              return
+            }
+          }
+        }
+        
+        // Fallback: try to get existing session
         const { data, error } = await supabase.auth.getSession()
-        if (error) throw error
+        
+        if (error) {
+          console.error('Session error:', error)
+          setStatus('error')
+          return
+        }
         
         if (data.session) {
           setStatus('success')
-          // Redirect to home page after a short delay
           setTimeout(() => {
             window.location.href = '/'
           }, 1000)
