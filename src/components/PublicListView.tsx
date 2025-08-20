@@ -30,7 +30,7 @@ export function PublicListView({ listId }: PublicListViewProps) {
           table: 'todos',
           filter: `todo_list_id=eq.${listId}`
         },
-        (payload) => {
+        () => {
           // Refresh the todos when changes occur
           loadPublicList()
         }
@@ -85,7 +85,7 @@ export function PublicListView({ listId }: PublicListViewProps) {
   const toggleTodo = async (todoId: string, completed: boolean) => {
     try {
       // Update the todo in the database
-      const { data: updatedTodo, error } = await supabase
+      const { error } = await supabase
         .from('todos')
         .update({ completed })
         .eq('id', todoId)

@@ -157,8 +157,7 @@ function App() {
           table: 'todos',
           filter: `todo_list_id=eq.${listId}`
         },
-        (payload) => {
-  
+        () => {
           loadTodos(listId)
         }
       )
