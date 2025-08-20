@@ -11,7 +11,7 @@ import { ProfilePage } from './components/ProfilePage'
 import './App.css'
 
 function App() {
-  const { user, loading: authLoading, signOut } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [todoLists, setTodoLists] = useState<TodoList[]>([])
   const [currentListId, setCurrentListId] = useState<string>('')
   const [currentTodos, setCurrentTodos] = useState<Todo[]>([])
