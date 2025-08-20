@@ -16,7 +16,7 @@ export default function App() {
   const { user, loading: authLoading } = useAuth()
   const [currentPage, setCurrentPage] = useState<Page>('home')
   const [todoLists, setTodoLists] = useState<TodoList[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [, setError] = useState<string | null>(null)
 
   // Get list parameter from URL
   const urlParams = new URLSearchParams(window.location.search)
