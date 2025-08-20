@@ -20,7 +20,7 @@ export function PublicListView({ listId }: PublicListViewProps) {
   const [editTitle, setEditTitle] = useState('')
   const [showShareModal, setShowShareModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [currentPage, setCurrentPage] = useState<'home' | 'profile' | 'list'>('list')
+  const [currentPage] = useState<'home' | 'profile' | 'list'>('list')
 
   const handleNavigate = (page: 'home' | 'profile' | 'list') => {
     if (page === 'home') {
