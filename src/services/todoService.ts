@@ -60,12 +60,13 @@ export const todoService = {
       await supabase.rpc('set_anonymous_session_id', { session_id: sessionId })
     }
     
-    // Simplified version - just get todos directly
+    // Get todos with priority sorting: incomplete first, then by creation date
     const { data, error } = await supabase
       .from('todos')
       .select('*')
       .eq('todo_list_id', listId)
-      .order('created_at', { ascending: false })
+      .order('completed', { ascending: true }) // false (incomplete) comes before true (completed)
+      .order('created_at', { ascending: false }) // newest incomplete items first, then newest completed items
 
     if (error) {
       throw error
@@ -176,15 +177,22 @@ export const todoService = {
     if (!user) {
       // Anonymous user - need to set session ID for RLS
       const sessionId = anonymousService.getSessionId()
+      console.log('Setting anonymous session ID for delete:', sessionId)
       await supabase.rpc('set_anonymous_session_id', { session_id: sessionId })
     }
 
+    console.log('Attempting to delete todo with ID:', id)
     const { error } = await supabase
       .from('todos')
       .delete()
       .eq('id', id)
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase delete error:', error)
+      throw error
+    }
+    
+    console.log('Todo deleted successfully from database')
   },
 
   // Update a todo list (including public/private toggle)

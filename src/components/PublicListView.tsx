@@ -74,14 +74,30 @@ export function PublicListView({ listId }: PublicListViewProps) {
     }
   }
 
+  const handleDeleteTodo = async (todoId: string) => {
+    try {
+      console.log('Attempting to delete todo:', todoId)
+      await todoService.deleteTodo(todoId)
+      console.log('Todo deleted successfully')
+      
+      // Fallback: manually remove from UI if real-time isn't working
+      setTodos(prev => prev.filter(t => t.id !== todoId))
+      
+      // Don't manually remove from todos - let real-time subscription handle it
+    } catch (err) {
+      console.error('PublicListView deleteTodo error:', err)
+      setError(`Failed to delete todo: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
   const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTodoText.trim()) return
 
     setIsAddingTodo(true)
     try {
-      const newTodo = await todoService.createTodo(newTodoText.trim(), listId)
-      setTodos([newTodo, ...todos])
+      await todoService.createTodo(newTodoText.trim(), listId)
+      // Don't manually add to todos - let real-time subscription handle it
       setNewTodoText('')
     } catch (err) {
       setError('Failed to add todo')
@@ -135,6 +151,8 @@ export function PublicListView({ listId }: PublicListViewProps) {
   useEffect(() => {
     if (!listId) return
 
+    console.log('Setting up real-time subscription for list:', listId)
+
     const subscription = supabase
       .channel(`public-todos-${listId}`)
       .on(
@@ -146,24 +164,47 @@ export function PublicListView({ listId }: PublicListViewProps) {
           filter: `todo_list_id=eq.${listId}`
         },
         (payload) => {
+          console.log('Real-time event received:', payload)
           if (payload.eventType === 'INSERT') {
-            setTodos(prev => [payload.new as Todo, ...prev])
+            console.log('New todo inserted:', payload.new)
+            setTodos(prev => {
+              const newTodos = [...prev, payload.new as Todo]
+              // Sort to maintain priority: incomplete first, then by creation date
+              return newTodos.sort((a, b) => {
+                if (a.completed !== b.completed) {
+                  return a.completed ? 1 : -1 // incomplete first
+                }
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
+              })
+            })
           } else if (payload.eventType === 'UPDATE') {
-            setTodos(prev => 
-              prev.map(todo => 
+            console.log('Todo updated:', payload.new)
+            setTodos(prev => {
+              const updatedTodos = prev.map(todo => 
                 todo.id === payload.new.id ? payload.new as Todo : todo
               )
-            )
+              // Re-sort after update to maintain priority order
+              return updatedTodos.sort((a, b) => {
+                if (a.completed !== b.completed) {
+                  return a.completed ? 1 : -1 // incomplete first
+                }
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
+              })
+            })
           } else if (payload.eventType === 'DELETE') {
+            console.log('Todo deleted:', payload.old)
             setTodos(prev => 
               prev.filter(todo => todo.id !== payload.old.id)
             )
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('Real-time subscription status:', status)
+      })
 
     return () => {
+      console.log('Unsubscribing from real-time channel')
       subscription.unsubscribe()
     }
   }, [listId])
@@ -285,7 +326,7 @@ export function PublicListView({ listId }: PublicListViewProps) {
           </div>
           
           <p className="text-gray-600 mb-4">
-            This is a public todo list. You can view and check off items, and changes sync in real-time.
+            This is a public todo list. Anyone can view, add new items, and check off completed items. Changes sync in real-time.
           </p>
           
           {/* Anonymous Warning */}
@@ -365,6 +406,15 @@ export function PublicListView({ listId }: PublicListViewProps) {
                   <span className={`flex-1 ${todo.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
                     {todo.title}
                   </span>
+                  <button
+                    onClick={() => handleDeleteTodo(todo.id)}
+                    className="p-1 hover:bg-red-100 rounded text-red-600"
+                    title="Delete todo"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               ))}
             </div>
@@ -373,7 +423,7 @@ export function PublicListView({ listId }: PublicListViewProps) {
 
         {/* Footer */}
         <div className="text-center mt-8 text-gray-500">
-          <p>Share this list with others using the URL above</p>
+          <p>Share this list with others to collaborate! Anyone with the link can add, complete, and delete todos.</p>
         </div>
       </div>
 

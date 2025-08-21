@@ -11,6 +11,7 @@ DROP FUNCTION IF EXISTS set_anonymous_session_id(TEXT);
 DROP POLICY IF EXISTS "Anonymous users can view lists by session" ON todo_lists;
 DROP POLICY IF EXISTS "Anonymous users can update their lists" ON todo_lists;
 DROP POLICY IF EXISTS "Anonymous users can delete their lists" ON todo_lists;
+DROP POLICY IF EXISTS "Users can view anonymous lists by session" ON todo_lists;
 
 -- Drop existing policies for todos that use current_setting
 DROP POLICY IF EXISTS "Users can view todos from anonymous lists by session" ON todos;
@@ -18,9 +19,19 @@ DROP POLICY IF EXISTS "Anonymous users can insert todos in their lists" ON todos
 DROP POLICY IF EXISTS "Anonymous users can update todos in their lists" ON todos;
 DROP POLICY IF EXISTS "Anonymous users can delete todos in their lists" ON todos;
 
+-- Drop any other policies that might exist with similar names
+DROP POLICY IF EXISTS "Anonymous users can view lists by session" ON todo_lists;
+DROP POLICY IF EXISTS "Anonymous users can update their lists by session" ON todo_lists;
+DROP POLICY IF EXISTS "Anonymous users can delete their lists by session" ON todo_lists;
+
 -- Create new policies that work without current_setting
 -- For anonymous lists, we'll allow access based on the anonymous_session_id being present
 -- and the list being marked as anonymous
+
+-- Drop any existing policies with these names first
+DROP POLICY IF EXISTS "Anonymous users can view lists" ON todo_lists;
+DROP POLICY IF EXISTS "Anonymous users can update their lists" ON todo_lists;
+DROP POLICY IF EXISTS "Anonymous users can delete their lists" ON todo_lists;
 
 -- Allow viewing of anonymous lists (anyone can view them if they're public)
 CREATE POLICY "Anonymous users can view lists" ON todo_lists
@@ -44,6 +55,13 @@ CREATE POLICY "Anonymous users can delete their lists" ON todo_lists
   );
 
 -- For todos, allow access to anonymous lists
+-- Drop any existing policies with these names first
+DROP POLICY IF EXISTS "Users can view todos from anonymous lists" ON todos;
+DROP POLICY IF EXISTS "Anonymous users can insert todos in their lists" ON todos;
+DROP POLICY IF EXISTS "Anonymous users can update todos in their lists" ON todos;
+DROP POLICY IF EXISTS "Anonymous users can delete todos in their lists" ON todos;
+DROP POLICY IF EXISTS "Anyone can insert todos into public lists" ON todos;
+
 CREATE POLICY "Users can view todos from anonymous lists" ON todos
   FOR SELECT USING (
     EXISTS (
@@ -64,6 +82,15 @@ CREATE POLICY "Anonymous users can insert todos in their lists" ON todos
     )
   );
 
+-- Allow anyone to insert todos into public lists (for collaboration)
+CREATE POLICY "Anyone can insert todos into public lists" ON todos
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM todo_lists 
+      WHERE id = todos.todo_list_id AND is_public = true
+    )
+  );
+
 -- Allow anonymous users to update todos in their lists
 CREATE POLICY "Anonymous users can update todos in their lists" ON todos
   FOR UPDATE USING (
@@ -77,6 +104,27 @@ CREATE POLICY "Anonymous users can update todos in their lists" ON todos
 
 -- Allow anonymous users to delete todos in their lists
 CREATE POLICY "Anonymous users can delete todos in their lists" ON todos
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM todo_lists 
+      WHERE id = todos.todo_list_id AND 
+      is_anonymous = true AND 
+      anonymous_session_id IS NOT NULL
+    )
+  );
+
+-- Allow anyone to delete todos from public lists (for cleanup and organization)
+-- This covers both anonymous users and authenticated users
+CREATE POLICY "Anyone can delete todos from public lists" ON todos
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM todo_lists 
+      WHERE id = todos.todo_list_id AND is_public = true
+    )
+  );
+
+-- Allow anonymous users to delete todos from their own anonymous lists
+CREATE POLICY "Anonymous users can delete todos from their anonymous lists" ON todos
   FOR DELETE USING (
     EXISTS (
       SELECT 1 FROM todo_lists 

@@ -77,8 +77,8 @@ export default function TodoListView({ listId }: TodoListViewProps) {
 
     setIsAddingTodo(true)
     try {
-      const newTodo = await todoService.createTodo(newTodoText.trim(), listId)
-      setTodos([newTodo, ...todos])
+      await todoService.createTodo(newTodoText.trim(), listId)
+      // Don't manually add to todos - let real-time subscription handle it
       setNewTodoText('')
     } catch (err) {
       setError('Failed to add todo')
@@ -90,7 +90,11 @@ export default function TodoListView({ listId }: TodoListViewProps) {
   const handleDeleteTodo = async (todoId: string) => {
     try {
       await todoService.deleteTodo(todoId)
-      setTodos(todos.filter(t => t.id !== todoId))
+      
+      // Fallback: manually remove from UI if real-time isn't working
+      setTodos(prev => prev.filter(t => t.id !== todoId))
+      
+      // Don't manually remove from todos - let real-time subscription handle it
     } catch (err) {
       setError('Failed to delete todo')
     }
@@ -163,13 +167,29 @@ export default function TodoListView({ listId }: TodoListViewProps) {
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            setTodos(prev => [payload.new as Todo, ...prev])
+            setTodos(prev => {
+              const newTodos = [...prev, payload.new as Todo]
+              // Sort to maintain priority: incomplete first, then by creation date
+              return newTodos.sort((a, b) => {
+                if (a.completed !== b.completed) {
+                  return a.completed ? 1 : -1 // incomplete first
+                }
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
+              })
+            })
           } else if (payload.eventType === 'UPDATE') {
-            setTodos(prev => 
-              prev.map(todo => 
+            setTodos(prev => {
+              const updatedTodos = prev.map(todo => 
                 todo.id === payload.new.id ? payload.new as Todo : todo
               )
-            )
+              // Re-sort after update to maintain priority order
+              return updatedTodos.sort((a, b) => {
+                if (a.completed !== b.completed) {
+                  return a.completed ? 1 : -1 // incomplete first
+                }
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
+              })
+            })
           } else if (payload.eventType === 'DELETE') {
             setTodos(prev => 
               prev.filter(todo => todo.id !== payload.old.id)
