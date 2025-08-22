@@ -23,7 +23,6 @@ export default function TodoListView({ listId }: TodoListViewProps) {
   const [editTitle, setEditTitle] = useState('')
   const [showShareModal, setShowShareModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting')
 
   // Cleanup on unmount
   useEffect(() => {
@@ -260,15 +259,7 @@ export default function TodoListView({ listId }: TodoListViewProps) {
           }
         }
       )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          setRealtimeStatus('connected')
-        } else if (status === 'CHANNEL_ERROR') {
-          setRealtimeStatus('error')
-        } else if (status === 'TIMED_OUT') {
-          setRealtimeStatus('error')
-        }
-      })
+      .subscribe()
 
     return () => {
       subscription.unsubscribe()
@@ -389,16 +380,6 @@ export default function TodoListView({ listId }: TodoListViewProps) {
                     ⏰ Expires in {anonymousService.getDaysRemaining()} days
                   </span>
                 )}
-                {/* Real-time status indicator */}
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                  realtimeStatus === 'connected' ? 'bg-green-100 text-green-800' :
-                  realtimeStatus === 'error' ? 'bg-red-100 text-red-800' :
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {realtimeStatus === 'connected' ? '🟢 Live' :
-                   realtimeStatus === 'error' ? '🔴 Offline' :
-                   '🟡 Connecting...'}
-                </span>
               </div>
             </div>
             
@@ -470,7 +451,22 @@ export default function TodoListView({ listId }: TodoListViewProps) {
 
         {/* Todos List */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Todos</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">Todos</h2>
+            {todos.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span>{Math.round((todos.filter(t => t.completed).length / todos.length) * 100)}% complete</span>
+                <div className="w-24 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: `${todos.length > 0 ? (todos.filter(t => t.completed).length / todos.length) * 100 : 0}%` 
+                    }}
+                  ></div>
+                </div>
+              </div>
+            )}
+          </div>
           
           {todos.length === 0 ? (
             <div className="text-center py-8 text-gray-500">

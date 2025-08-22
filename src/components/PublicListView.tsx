@@ -461,7 +461,22 @@ export function PublicListView({ listId }: PublicListViewProps) {
 
         {/* Todos List */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Todos</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">Todos</h2>
+            {todos.length > 0 && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span>{Math.round((todos.filter(t => t.completed).length / todos.length) * 100)}% complete</span>
+                <div className="w-24 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: `${todos.length > 0 ? (todos.filter(t => t.completed).length / todos.length) * 100 : 0}%` 
+                    }}
+                  ></div>
+                </div>
+              </div>
+            )}
+          </div>
           
           {todos.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
