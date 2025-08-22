@@ -199,7 +199,7 @@ export function PublicListView({ listId }: PublicListViewProps) {
           schema: 'public',
           table: 'todos'
         },
-        (payload) => {
+        () => {
           // Just log the event, don't process it - let the filtered handler do the work
         }
       )
