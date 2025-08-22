@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { todoService } from '../services/todoService'
 import { anonymousService } from '../services/anonymousService'
 import type { Todo, TodoList } from '../types'
@@ -10,6 +10,7 @@ interface PublicListViewProps {
 }
 
 export function PublicListView({ listId }: PublicListViewProps) {
+  const isMounted = useRef(true)
   const [list, setList] = useState<TodoList | null>(null)
   const [todos, setTodos] = useState<Todo[]>([])
   const [loading, setLoading] = useState(true)
@@ -22,6 +23,15 @@ export function PublicListView({ listId }: PublicListViewProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [currentPage] = useState<'home' | 'profile' | 'list'>('list')
 
+  // Cleanup on unmount - only run when component actually unmounts
+  useEffect(() => {
+    isMounted.current = true
+    
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
+
   const handleNavigate = (page: 'home' | 'profile' | 'list') => {
     if (page === 'home') {
       window.location.href = '/'
@@ -32,11 +42,7 @@ export function PublicListView({ listId }: PublicListViewProps) {
     }
   }
 
-  useEffect(() => {
-    loadListAndTodos()
-  }, [listId])
-
-  const loadListAndTodos = async () => {
+  const loadListAndTodos = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -63,7 +69,11 @@ export function PublicListView({ listId }: PublicListViewProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [listId])
+
+  useEffect(() => {
+    loadListAndTodos()
+  }, [loadListAndTodos])
 
   const handleToggleTodo = async (todo: Todo) => {
     try {
@@ -76,9 +86,7 @@ export function PublicListView({ listId }: PublicListViewProps) {
 
   const handleDeleteTodo = async (todoId: string) => {
     try {
-      console.log('Attempting to delete todo:', todoId)
       await todoService.deleteTodo(todoId)
-      console.log('Todo deleted successfully')
       
       // Fallback: manually remove from UI if real-time isn't working
       setTodos(prev => prev.filter(t => t.id !== todoId))
@@ -151,24 +159,28 @@ export function PublicListView({ listId }: PublicListViewProps) {
   useEffect(() => {
     if (!listId) return
 
-    console.log('Setting up real-time subscription for list:', listId)
+    // Use a global channel name that both components can share
+    const channelName = `todos-global-${listId}`
 
+    // Create a single channel for all events
     const subscription = supabase
-      .channel(`public-todos-${listId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'todos',
           filter: `todo_list_id=eq.${listId}`
         },
         (payload) => {
-          console.log('Real-time event received:', payload)
-          if (payload.eventType === 'INSERT') {
-            console.log('New todo inserted:', payload.new)
+          // Check if this todo already exists to prevent duplicates
+          const todoExists = todos.some(todo => todo.id === payload.new.id)
+          
+          if (isMounted.current && !todoExists) {
             setTodos(prev => {
               const newTodos = [...prev, payload.new as Todo]
+              
               // Sort to maintain priority: incomplete first, then by creation date
               return newTodos.sort((a, b) => {
                 if (a.completed !== b.completed) {
@@ -177,13 +189,36 @@ export function PublicListView({ listId }: PublicListViewProps) {
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
               })
             })
-          } else if (payload.eventType === 'UPDATE') {
-            console.log('Todo updated:', payload.new)
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'todos'
+        },
+        (payload) => {
+          // Just log the event, don't process it - let the filtered handler do the work
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'todos',
+          filter: `todo_list_id=eq.${listId}`
+        },
+        (payload) => {
+          if (isMounted.current) {
             setTodos(prev => {
               const updatedTodos = prev.map(todo => 
                 todo.id === payload.new.id ? payload.new as Todo : todo
               )
-              // Re-sort after update to maintain priority order
+              
+              // Sort to maintain priority: incomplete first, then by creation date
               return updatedTodos.sort((a, b) => {
                 if (a.completed !== b.completed) {
                   return a.completed ? 1 : -1 // incomplete first
@@ -191,20 +226,59 @@ export function PublicListView({ listId }: PublicListViewProps) {
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
               })
             })
-          } else if (payload.eventType === 'DELETE') {
-            console.log('Todo deleted:', payload.old)
-            setTodos(prev => 
-              prev.filter(todo => todo.id !== payload.old.id)
-            )
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'todos',
+          filter: `todo_list_id=eq.${listId}`
+        },
+        (payload) => {
+          if (isMounted.current && payload.old && payload.old.id) {
+            const deletedTodoId = payload.old.id
+            
+            setTodos(prev => {
+              const filteredTodos = prev.filter(todo => todo.id !== deletedTodoId)
+              return filteredTodos
+            })
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'todos'
+        },
+        (payload) => {
+          // Fallback: If the filtered handler isn't working, manually process DELETE events
+          if (payload.old?.id && isMounted.current) {
+            // Remove the todo from the current state
+            setTodos(prev => {
+              const filteredTodos = prev.filter(todo => todo.id !== payload.old.id)
+              return filteredTodos
+            })
           }
         }
       )
       .subscribe((status) => {
-        console.log('Real-time subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          // Successfully subscribed to real-time updates
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Real-time subscription error for list:', listId)
+        } else if (status === 'TIMED_OUT') {
+          console.error('Real-time subscription timed out for list:', listId)
+        } else if (status === 'CLOSED') {
+          console.error('Real-time subscription closed for list:', listId)
+        }
       })
 
     return () => {
-      console.log('Unsubscribing from real-time channel')
       subscription.unsubscribe()
     }
   }, [listId])
@@ -302,26 +376,43 @@ export function PublicListView({ listId }: PublicListViewProps) {
               </span>
               
               <button
+                onClick={() => {
+                  setLoading(true)
+                  loadListAndTodos()
+                }}
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+                title="Refresh list"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
+              
+              <button
                 onClick={shareList}
                 className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
                 title="Share list"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367 2.684z" />
                 </svg>
                 Share
               </button>
               
-              <button
-                onClick={handleDeleteList}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                title="Delete list"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Delete
-              </button>
+              {/* Only show delete button if this is an anonymous list created by the current session */}
+              {list.is_anonymous && list.anonymous_session_id === anonymousService.getSessionId() && (
+                <button
+                  onClick={handleDeleteList}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                  title="Delete list"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete
+                </button>
+              )}
             </div>
           </div>
           
@@ -406,15 +497,18 @@ export function PublicListView({ listId }: PublicListViewProps) {
                   <span className={`flex-1 ${todo.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
                     {todo.title}
                   </span>
-                  <button
-                    onClick={() => handleDeleteTodo(todo.id)}
-                    className="p-1 hover:bg-red-100 rounded text-red-600"
-                    title="Delete todo"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  {/* Show delete button if user created the todo OR if user is the list creator */}
+                  {(todo.user_id === null || list.user_id === null) && (
+                    <button
+                      onClick={() => handleDeleteTodo(todo.id)}
+                      className="p-1 hover:bg-red-100 rounded text-red-600"
+                      title="Delete todo"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -423,7 +517,7 @@ export function PublicListView({ listId }: PublicListViewProps) {
 
         {/* Footer */}
         <div className="text-center mt-8 text-gray-500">
-          <p>Share this list with others to collaborate! Anyone with the link can add, complete, and delete todos.</p>
+          <p>Share this list with others to collaborate! Anyone with the link can add and complete todos. List creators can delete any item, while others can only delete their own.</p>
         </div>
       </div>
 

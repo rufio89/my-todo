@@ -12,7 +12,7 @@ WHERE is_anonymous = true
 -- Optional: Log the cleanup operation
 -- You can create a cleanup_logs table to track when this runs
 
--- Example cleanup_logs table structure:
+-- Example cleanup_logsWhe table structure:
 -- CREATE TABLE IF NOT EXISTS cleanup_logs (
 --   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
 --   cleaned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

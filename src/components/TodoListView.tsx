@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { todoService } from '../services/todoService'
 import { anonymousService } from '../services/anonymousService'
+import { useAuth } from '../contexts/AuthContext'
 import type { Todo, TodoList } from '../types'
 import { supabase } from '../supabase'
 
@@ -10,6 +11,8 @@ interface TodoListViewProps {
 }
 
 export default function TodoListView({ listId }: TodoListViewProps) {
+  const { user } = useAuth()
+  const isMounted = useRef(true)
   const [list, setList] = useState<TodoList | null>(null)
   const [todos, setTodos] = useState<Todo[]>([])
   const [loading, setLoading] = useState(true)
@@ -20,12 +23,16 @@ export default function TodoListView({ listId }: TodoListViewProps) {
   const [editTitle, setEditTitle] = useState('')
   const [showShareModal, setShowShareModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting')
 
+  // Cleanup on unmount
   useEffect(() => {
-    loadListAndTodos()
-  }, [listId])
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
 
-  const loadListAndTodos = async () => {
+  const loadListAndTodos = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -60,7 +67,11 @@ export default function TodoListView({ listId }: TodoListViewProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [listId])
+
+  useEffect(() => {
+    loadListAndTodos()
+  }, [loadListAndTodos])
 
   const handleToggleTodo = async (todo: Todo) => {
     try {
@@ -155,54 +166,114 @@ export default function TodoListView({ listId }: TodoListViewProps) {
   useEffect(() => {
     if (!listId) return
 
+    // Use a global channel name that both components can share
+    const channelName = `todos-global-${listId}`
+
+    // Create a single channel for all events
     const subscription = supabase
-      .channel(`todos-${listId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'todos',
           filter: `todo_list_id=eq.${listId}`
         },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setTodos(prev => {
-              const newTodos = [...prev, payload.new as Todo]
-              // Sort to maintain priority: incomplete first, then by creation date
-              return newTodos.sort((a, b) => {
-                if (a.completed !== b.completed) {
-                  return a.completed ? 1 : -1 // incomplete first
-                }
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
-              })
+          setTodos(prev => {
+            const newTodos = [...prev, payload.new as Todo]
+            
+            // Sort to maintain priority: incomplete first, then by creation date
+            return newTodos.sort((a, b) => {
+              if (a.completed !== b.completed) {
+                return a.completed ? 1 : -1 // incomplete first
+              }
+              return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
             })
-          } else if (payload.eventType === 'UPDATE') {
-            setTodos(prev => {
-              const updatedTodos = prev.map(todo => 
-                todo.id === payload.new.id ? payload.new as Todo : todo
-              )
-              // Re-sort after update to maintain priority order
-              return updatedTodos.sort((a, b) => {
-                if (a.completed !== b.completed) {
-                  return a.completed ? 1 : -1 // incomplete first
-                }
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
-              })
-            })
-          } else if (payload.eventType === 'DELETE') {
-            setTodos(prev => 
-              prev.filter(todo => todo.id !== payload.old.id)
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'todos',
+          filter: `todo_list_id=eq.${listId}`
+        },
+        (payload) => {
+          setTodos(prev => {
+            const updatedTodos = prev.map(todo => 
+              todo.id === payload.new.id ? payload.new as Todo : todo
             )
+            
+            // Sort to maintain priority: incomplete first, then by creation date
+            return updatedTodos.sort((a, b) => {
+              if (a.completed !== b.completed) {
+                return a.completed ? 1 : -1 // incomplete first
+              }
+              return new Date(b.created_at).getTime() - new Date(a.created_at).getTime() // newest first
+            })
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'todos',
+          filter: `todo_list_id=eq.${listId}`
+        },
+        (payload) => {
+          // Based on the actual event structure, payload.old should contain the deleted record
+          if (payload.old && payload.old.id) {
+            const deletedTodoId = payload.old.id
+            
+            if (isMounted.current) {
+              setTodos(prev => {
+                const filteredTodos = prev.filter(todo => todo.id !== deletedTodoId)
+                return filteredTodos
+              })
+            }
+          } else {
+            console.error('Could not determine deleted todo ID, payload:', payload)
           }
         }
       )
-      .subscribe()
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'todos'
+        },
+        (payload) => {
+          // Fallback: If the filtered handler isn't working, manually process DELETE events
+          if (payload.old?.id && isMounted.current) {
+            // Remove the todo from the current state
+            setTodos(prev => {
+              const filteredTodos = prev.filter(todo => todo.id !== payload.old.id)
+              return filteredTodos
+            })
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setRealtimeStatus('connected')
+        } else if (status === 'CHANNEL_ERROR') {
+          setRealtimeStatus('error')
+        } else if (status === 'TIMED_OUT') {
+          setRealtimeStatus('error')
+        }
+      })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [listId])
+  }, [listId]) // Remove loadListAndTodos and realtimeStatus from dependencies to prevent re-renders
 
   const handleGoHome = () => {
     // Navigate back to home by clearing the URL parameter
@@ -318,6 +389,16 @@ export default function TodoListView({ listId }: TodoListViewProps) {
                     ⏰ Expires in {anonymousService.getDaysRemaining()} days
                   </span>
                 )}
+                {/* Real-time status indicator */}
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  realtimeStatus === 'connected' ? 'bg-green-100 text-green-800' :
+                  realtimeStatus === 'error' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {realtimeStatus === 'connected' ? '🟢 Live' :
+                   realtimeStatus === 'error' ? '🔴 Offline' :
+                   '🟡 Connecting...'}
+                </span>
               </div>
             </div>
             
@@ -343,11 +424,24 @@ export default function TodoListView({ listId }: TodoListViewProps) {
 
               <div className="flex gap-2">
                 <button
+                  onClick={() => {
+                    setLoading(true)
+                    loadListAndTodos()
+                  }}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+                  title="Refresh list"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
+                <button
                   onClick={shareList}
                   className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367 2.684z" />
                   </svg>
                   Share
                 </button>
@@ -356,7 +450,7 @@ export default function TodoListView({ listId }: TodoListViewProps) {
                   className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-red-100 hover:text-red-700 transition-colors flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   Delete
                 </button>
@@ -411,17 +505,20 @@ export default function TodoListView({ listId }: TodoListViewProps) {
                   <span className={`flex-1 ${todo.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
                     {todo.title}
                   </span>
-                  <button
-                    onClick={() => handleDeleteTodo(todo.id)}
-                    className="p-1 hover:bg-red-100 rounded text-red-600"
-                    title="Delete todo"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  {/* Show delete button if user created the todo OR if user is the list creator */}
+                  {(todo.user_id === user?.id || list?.user_id === user?.id) && (
+                    <button
+                      onClick={() => handleDeleteTodo(todo.id)}
+                      className="p-1 hover:bg-red-100 rounded text-red-600"
+                      title="Delete todo"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
-                </div>
-              ))}
+                )}
+              </div>
+            ))}
             </div>
           )}
         </div>
